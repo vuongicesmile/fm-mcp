@@ -2,6 +2,7 @@
 """Pydantic v2 contracts for risk APIs."""
 
 from datetime import date, datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -22,7 +23,7 @@ class RiskUpdate(BaseModel):
     description: str | None = None
     category: str | None = Field(default=None, max_length=100)
     owner_id: str | None = Field(default=None, min_length=1, max_length=100)
-    status: str | None = None
+    status: Literal["open", "mitigating", "mitigated", "accepted", "closed"] | None = None
     mitigation_plan: str | None = None
     review_date: date | None = None
 
@@ -82,3 +83,7 @@ class RiskHeatmapCell(BaseModel):
     likelihood: int = Field(ge=1, le=5)
     impact: int = Field(ge=1, le=5)
     count: int = Field(ge=0)
+
+
+class RiskDetail(RiskRead):
+    latest_assessment: RiskAssessmentRead | None = None

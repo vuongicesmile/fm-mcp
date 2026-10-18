@@ -9,11 +9,14 @@ from fm_mcp.clients.fm_api import create_client
 from fm_mcp.core.config import settings
 
 
-def _call(method: str, path: str, payload: dict[str, Any] | None = None) -> dict[str, Any] | list[dict[str, Any]]:
+def _call(
+    method: str, path: str, payload: dict[str, Any] | None = None, extra_headers: dict[str, str] | None = None,
+) -> dict[str, Any] | list[dict[str, Any]]:
     headers: dict[str, str] = {}
     if settings.mcp_dev_user_id:
         headers["X-Authenticated-User-Id"] = settings.mcp_dev_user_id
         headers["X-Authenticated-Roles"] = settings.mcp_dev_roles
+    headers.update(extra_headers or {})
     with create_client() as client:
         response = client.request(method, path, json=payload, headers=headers)
         response.raise_for_status()
@@ -80,4 +83,89 @@ def register_tools(mcp: FastMCP) -> None:
         """Lấy lịch sử trạng thái request."""
         result = _call("GET", f"/api/v1/requests/{UUID(request_id)}/history")
         assert isinstance(result, list)
+        return result
+
+    @mcp.tool()
+    def get_pending_approvals() -> dict[str, Any]:
+        """Lấy các approval step hiện tại người dùng được phép xử lý."""
+        result = _call("GET", "/api/v1/approvals/pending")
+        assert isinstance(result, dict)
+        return result
+
+    @mcp.tool()
+    def approve_request(approval_step_id: str, comment: str | None = None, idempotency_key: str | None = None) -> dict[str, Any]:
+        """Phê duyệt một approval step; danh tính được chuyển tiếp từ MCP runtime."""
+        headers = {"Idempotency-Key": idempotency_key} if idempotency_key else None
+        result = _call("POST", f"/api/v1/approvals/{UUID(approval_step_id)}/approve", {"comment": comment}, headers)
+        assert isinstance(result, dict)
+        return result
+
+    @mcp.tool()
+    def reject_request(approval_step_id: str, comment: str | None = None, idempotency_key: str | None = None) -> dict[str, Any]:
+        """Từ chối một approval step."""
+        headers = {"Idempotency-Key": idempotency_key} if idempotency_key else None
+        result = _call("POST", f"/api/v1/approvals/{UUID(approval_step_id)}/reject", {"comment": comment}, headers)
+        assert isinstance(result, dict)
+        return result
+
+    @mcp.tool()
+    def get_approval_history(approval_step_id: str) -> list[dict[str, Any]]:
+        """Lấy lịch sử action của một approval step."""
+        result = _call("GET", f"/api/v1/approvals/{UUID(approval_step_id)}/history")
+        assert isinstance(result, list)
+        return result
+
+    @mcp.tool()
+    def create_risk(title: str, description: str, owner_id: str, request_id: str | None = None, category: str | None = None) -> dict[str, Any]:
+        """Tạo rủi ro trong Risk Register qua REST API."""
+        payload = {"title": title, "description": description, "owner_id": owner_id, "category": category}
+        if request_id:
+            payload["request_id"] = str(UUID(request_id))
+        result = _call("POST", "/api/v1/risks", payload)
+        assert isinstance(result, dict)
+        return result
+
+    @mcp.tool()
+    def update_risk(risk_id: str, changes: dict[str, Any]) -> dict[str, Any]:
+        """Cập nhật chủ sở hữu, mitigation plan hoặc trạng thái rủi ro."""
+        result = _call("PATCH", f"/api/v1/risks/{UUID(risk_id)}", changes)
+        assert isinstance(result, dict)
+        return result
+
+    @mcp.tool()
+    def get_risk_register(status: str | None = None) -> dict[str, Any]:
+        """Truy vấn Risk Register, có thể lọc theo status."""
+        suffix = f"?status={status}" if status else ""
+        result = _call("GET", f"/api/v1/risks{suffix}")
+        assert isinstance(result, dict)
+        return result
+
+    @mcp.tool()
+    def assess_risk(risk_id: str, likelihood: int, impact: int, assessment_type: str, notes: str | None = None) -> dict[str, Any]:
+        """Ghi nhận assessment rủi ro; score mặc định là likelihood × impact."""
+        result = _call("POST", f"/api/v1/risks/{UUID(risk_id)}/assessments", {
+            "likelihood": likelihood, "impact": impact, "assessment_type": assessment_type, "notes": notes,
+        })
+        assert isinstance(result, dict)
+        return result
+
+    @mcp.tool()
+    def get_risk_heatmap() -> list[dict[str, Any]]:
+        """Lấy số lượng rủi ro theo ma trận likelihood/impact."""
+        result = _call("GET", "/api/v1/risks/heatmap")
+        assert isinstance(result, list)
+        return result
+
+    @mcp.tool()
+    def get_notifications() -> dict[str, Any]:
+        """Lấy notification records mà người dùng được phép xem."""
+        result = _call("GET", "/api/v1/notifications")
+        assert isinstance(result, dict)
+        return result
+
+    @mcp.tool()
+    def get_overdue_requests() -> dict[str, Any]:
+        """Lấy request quá hạn; backend yêu cầu role fm_admin."""
+        result = _call("GET", "/api/v1/requests/overdue")
+        assert isinstance(result, dict)
         return result

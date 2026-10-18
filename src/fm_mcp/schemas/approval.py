@@ -2,6 +2,7 @@
 """Pydantic v2 contracts for approval APIs."""
 
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -21,10 +22,13 @@ class ApprovalStepRead(BaseModel):
     request_id: UUID
     workflow_step_id: UUID
     step_order: int
+    approver_id: str | None
     approver_role: str
-    approval_mode: str
+    approval_mode: Literal["any", "all"]
     status: str
     due_at: datetime | None
+    started_at: datetime | None
+    completed_at: datetime | None
     assignments: list[ApprovalAssignmentRead] = []
 
 
@@ -41,6 +45,13 @@ class ApprovalActionRead(BaseModel):
     action: str
     comment: str | None
     acted_at: datetime
+
+
+class ApprovalActionResult(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    approval_step: ApprovalStepRead
+    request_status: str
+    action: ApprovalActionRead
 
 
 class ApprovalAssignmentCreate(BaseModel):

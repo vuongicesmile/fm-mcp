@@ -3,6 +3,7 @@
 
 from datetime import datetime
 from decimal import Decimal
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -35,7 +36,7 @@ class RequestCreate(BaseModel):
     request_type: str = Field(max_length=50)
     title: str = Field(min_length=1, max_length=255)
     description: str | None = None
-    priority: str = "medium"
+    priority: Literal["low", "medium", "high", "critical"] = "medium"
     department_id: str | None = Field(default=None, max_length=100)
     campus_id: str | None = Field(default=None, max_length=100)
     estimated_value: Decimal | None = Field(default=None, ge=0)
@@ -46,7 +47,7 @@ class RequestCreate(BaseModel):
 class RequestUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = None
-    priority: str | None = None
+    priority: Literal["low", "medium", "high", "critical"] | None = None
     department_id: str | None = Field(default=None, max_length=100)
     campus_id: str | None = Field(default=None, max_length=100)
     estimated_value: Decimal | None = Field(default=None, ge=0)
@@ -91,7 +92,7 @@ class WorkflowStepCreate(BaseModel):
     step_order: int = Field(ge=1)
     name: str = Field(min_length=1, max_length=200)
     approver_role: str = Field(min_length=1, max_length=100)
-    approval_mode: str = "any"
+    approval_mode: Literal["any", "all"] = "any"
     due_days: int | None = Field(default=None, ge=0)
     conditions: dict = Field(default_factory=dict)
 
@@ -99,7 +100,7 @@ class WorkflowStepCreate(BaseModel):
 class WorkflowStepUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=200)
     approver_role: str | None = Field(default=None, min_length=1, max_length=100)
-    approval_mode: str | None = None
+    approval_mode: Literal["any", "all"] | None = None
     due_days: int | None = Field(default=None, ge=0)
     conditions: dict | None = None
 

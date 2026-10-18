@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 from fm_mcp.api.dependencies import CurrentUser, get_current_user
 from fm_mcp.domain.models.workflow import FMRequest, RequestStatusHistory, WorkflowDefinition
 from fm_mcp.domain.services.workflow import WorkflowService
+from fm_mcp.domain.services.notification import NotificationService
 from fm_mcp.infrastructure.database import get_db_session
 from fm_mcp.schemas.workflow import (
     RequestCreate, RequestList, RequestRead, RequestStatusHistoryRead, RequestUpdate, WorkflowDefinitionRead,
@@ -36,6 +37,15 @@ async def list_requests(offset: int = Query(0, ge=0), limit: int = Query(50, ge=
     items = list((await session.scalars(statement)).all())
     total = await session.scalar(select(func.count()).select_from(FMRequest).where(FMRequest.requester_id == user.id))
     return RequestList(items=items, total=total or 0, offset=offset, limit=limit)
+
+
+@router.get("/requests/overdue", response_model=RequestList)
+async def overdue_requests(
+    offset: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=100),
+    session: AsyncSession = Depends(get_db_session), user: CurrentUser = Depends(get_current_user),
+):
+    items, total = await NotificationService(session, user.id, user.roles).overdue_requests(offset, limit)
+    return RequestList(items=items, total=total, offset=offset, limit=limit)
 
 
 @router.get("/requests/{request_id}", response_model=RequestRead)

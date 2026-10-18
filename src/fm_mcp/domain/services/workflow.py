@@ -1,6 +1,6 @@
 """Transactional workflow/request application service."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 from fastapi import HTTPException, status
@@ -10,8 +10,10 @@ from sqlalchemy.orm import selectinload
 
 from fm_mcp.domain.models.workflow import (
     ApprovalStep,
+    ApprovalAssignment,
     AuditLog,
     FMRequest,
+    Notification,
     RequestStatusHistory,
     WorkflowDefinition,
 )
@@ -94,13 +96,25 @@ class WorkflowService:
         request.status = "in_review"
         request.submitted_at = datetime.now(UTC)
         for step in workflow.steps:
-            self.session.add(ApprovalStep(
+            approver_ids = step.conditions.get("approver_ids", [])
+            if not isinstance(approver_ids, list) or not all(isinstance(item, str) and item for item in approver_ids):
+                raise HTTPException(status_code=422, detail="workflow step conditions.approver_ids must be a list of user IDs")
+            approval_step = ApprovalStep(
                 request_id=request.id, workflow_step_id=step.id, step_order=step.step_order,
+                approver_id=approver_ids[0] if len(approver_ids) == 1 else None,
                 approver_role=step.approver_role, approval_mode=step.approval_mode,
-                due_at=(request.submitted_at if step.due_days is None else None),
-            ))
+                due_at=(request.submitted_at + timedelta(days=step.due_days) if step.due_days is not None else None),
+            )
+            self.session.add(approval_step)
+            await self.session.flush()
+            for approver_id in approver_ids:
+                self.session.add(ApprovalAssignment(approval_step_id=approval_step.id, approver_id=approver_id))
         self.session.add(RequestStatusHistory(request_id=request.id, from_status="draft", to_status="in_review", changed_by=self.actor_id))
         self.session.add(AuditLog(entity_type="request", entity_id=request.id, action="submitted", actor_id=self.actor_id, request_id=request.id))
+        self.session.add(Notification(
+            request_id=request.id, recipient_id=request.requester_id, channel="in_app",
+            event_code="request_submitted", payload={"request_code": request.request_code},
+        ))
         await self.session.flush()
         await self.session.refresh(request)
         return request

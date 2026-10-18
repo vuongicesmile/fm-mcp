@@ -55,5 +55,16 @@ services:
     stdin_open: true
     tty: true
 
+  scheduler:
+    build: .
+    command: ["python", "scripts/evaluate_escalations.py"]
+    environment:
+      FM_ENV: development
+      DATABASE_URL: postgresql+asyncpg://fm_user:fm_local_password@postgres:5432/fm_central
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["tools"]
+
 volumes:
   fm_mcp_postgres:
