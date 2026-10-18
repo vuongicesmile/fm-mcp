@@ -38,3 +38,15 @@ Các migration của EPIC 3 nằm trong `alembic/versions` và dùng version tab
 ```bash
 FM_ENV=test DATABASE_URL=postgresql+asyncpg://... ./scripts/migrate.sh
 ```
+
+## Docker Compose development
+
+```bash
+docker compose up -d postgres
+docker compose run --rm migrate
+docker compose up -d api
+docker compose run --rm mcp
+```
+
+`mcp` uses stdio. Trong local development, nó chuyển `FM_MCP_DEV_USER_ID` thành
+identity header cho API; không dùng cấu hình này ở production.

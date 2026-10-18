@@ -1,0 +1,59 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: fm_user
+      POSTGRES_PASSWORD: fm_local_password
+      POSTGRES_DB: fm_central
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fm_user -d fm_central"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - fm_mcp_postgres:/var/lib/postgresql/data
+
+  api:
+    build: .
+    command: ["fm-workflow-api"]
+    environment:
+      FM_ENV: development
+      DATABASE_URL: postgresql+asyncpg://fm_user:fm_local_password@postgres:5432/fm_central
+      FM_WORKFLOW_API_AUDIENCE: fm-workflow-api
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  migrate:
+    build: .
+    command: ["./scripts/migrate.sh"]
+    environment:
+      FM_ENV: development
+      DATABASE_URL: postgresql+asyncpg://fm_user:fm_local_password@postgres:5432/fm_central
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["tools"]
+
+  mcp:
+    build: .
+    command: ["fm-mcp"]
+    environment:
+      FM_ENV: development
+      FM_WORKFLOW_API_URL: http://api:8000
+      FM_API_TIMEOUT: "30"
+      FM_MCP_DEV_USER_ID: local-developer
+      FM_MCP_DEV_ROLES: fm_admin
+    depends_on:
+      api:
+        condition: service_started
+    profiles: ["tools"]
+    stdin_open: true
+    tty: true
+
+volumes:
+  fm_mcp_postgres:

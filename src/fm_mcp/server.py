@@ -2,6 +2,7 @@
 
 from fastmcp import FastMCP
 
-mcp = FastMCP("fm-mcp")
+from fm_mcp.tools.registry import register_tools
 
-# Import tool modules here as they are implemented so their tools are registered.
+mcp = FastMCP("fm-mcp")
+register_tools(mcp)

@@ -34,6 +34,10 @@ jobs:
         run: python -m pip install --upgrade pip && pip install -e ".[dev]"
       - name: Load FastAPI application
         run: python -c "from fm_mcp.api.main import app; assert app.title == 'FM Workflow Automation API'"
+      - name: Load MCP tool registry
+        run: python -c "from fm_mcp.server import mcp; assert mcp is not None"
+      - name: Validate Compose and build image
+        run: docker compose -f compose.yml config && docker build -t fm-mcp-ci .
       - name: Upgrade isolated PostgreSQL database
         run: ./scripts/migrate.sh
       - name: Verify EPIC 3 table inventory
