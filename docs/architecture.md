@@ -15,17 +15,51 @@ runtime độc lập dùng chung domain code:
 ```mermaid
 flowchart LR
     Portal[FM Portal] --> CP[FM Control Plane / Orchestrator]
-    CP -->|REST command/query| API[Workflow Automation API]
+    CP -->|REST command/query + JWT| API[Workflow Automation API]
     MCPClient[MCP client] --> MCP[fm-mcp adapter]
-    MCP -->|REST command/query| API
+    MCP -->|REST command/query + trusted caller context| API
     API --> DB[(fm_central)]
-    API --> Queue[Outbox / scheduler]
-    Queue --> Adapters[Email / Teams adapters]
+    API --> Queue[(fm_notifications outbox)]
+    Scheduler[Escalation scheduler] -->|idempotent scans| DB
+    Dispatcher[SMTP dispatcher] -->|claim with SKIP LOCKED| Queue
+    Dispatcher --> SMTP[Mailpit / SMTP relay]
+    SMTP --> Recipient[Email recipient]
 ```
 
 Control Plane không ghi trực tiếp vào bảng EPIC 3. Nó gọi API của module như
 một client có quyền hạn phù hợp. Điều này giữ ownership rõ ràng khi platform có
 nhiều module khác.
+
+## Use case overview
+
+```mermaid
+flowchart LR
+    Requester[Requester] --> UC1([Create / update / submit request])
+    Requester --> UC2([Track status and notifications])
+    Approver[Approver] --> UC3([List pending approvals])
+    Approver --> UC4([Approve / reject / return])
+    RiskOwner[Risk owner] --> UC5([Create, assess and mitigate risk])
+    Admin[FM admin] --> UC6([Manage notification templates and escalation rules])
+    Admin --> UC7([View risk heatmap and overdue requests])
+    MCPClient[MCP client] --> UC8([Call REST-backed MCP tools])
+    Scheduler[Trusted scheduler] --> UC9([Generate idempotent reminders])
+    Dispatcher[Trusted dispatcher] --> UC10([Deliver queued emails])
+
+    UC1 --> API[Workflow Automation API]
+    UC2 --> API
+    UC3 --> API
+    UC4 --> API
+    UC5 --> API
+    UC6 --> API
+    UC7 --> API
+    UC8 --> API
+    UC9 --> API
+    UC10 --> API
+```
+
+Use cases `UC9` và `UC10` không có public REST endpoint. Chúng chạy bằng
+trusted worker với database credentials, nên user/MCP client không thể tự kích
+hoạt escalation hoặc gửi email ngoài policy.
 
 ## Ownership database và migration
 
@@ -91,7 +125,7 @@ HTTP ngay cả khi cùng repository; nó không import repository hoặc mở DB
 | Request and approval state machine | Owns | Calls API |
 | Current user and RBAC | Validates | Forwards trusted caller token |
 | Idempotency, locking, audit | Enforces in DB transaction | Forwards idempotency/correlation headers |
-| Notifications and reminders | Creates records, scheduler delivers | Reads safe status only |
+| Notifications and reminders | Creates records, scheduler/SMTP worker delivers | Reads safe status only |
 | Control Plane integration | Serves REST contract | Uses the same REST contract |
 
 API exposes the EPIC 3 REST endpoints: workflow list, requests and history,
@@ -119,6 +153,10 @@ mọi mutable operation. MCP không log access token và chỉ trả normalized 
 | `FM_API_TIMEOUT` | MCP adapter | HTTP timeout in seconds. |
 | `FM_ENV` | Both | Runtime environment. |
 | `FM_WORKFLOW_API_AUDIENCE` | Both | Expected API audience for JWT/OAuth. |
+| `FM_SMTP_HOST`, `FM_SMTP_PORT` | SMTP dispatcher | SMTP relay address. |
+| `FM_SMTP_FROM_ADDRESS` | SMTP dispatcher | Sender address. |
+| `FM_SMTP_STARTTLS`, `FM_SMTP_USERNAME`, `FM_SMTP_PASSWORD` | SMTP dispatcher | SMTP transport security and credentials. |
+| `FM_SMTP_MAX_ATTEMPTS`, `FM_SMTP_RETRY_DELAY_SECONDS` | SMTP dispatcher | Failed-delivery retry policy. |
 
 Database credentials exist only in API deployment. MCP deployment receives no
 `DATABASE_URL`.

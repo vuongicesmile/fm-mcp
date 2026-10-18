@@ -19,6 +19,52 @@ dùng `FM_WORKFLOW_API_URL`; nó không nhận database credentials.
 `fm-mcp` có Alembic history riêng với version table `alembic_version_fm_mcp`.
 Migration của module chỉ thao tác các bảng EPIC 3 mà module sở hữu.
 
+## Architecture overview
+
+```mermaid
+flowchart LR
+    Portal[FM Portal] --> CP[FM Control Plane]
+    CP -->|REST + user JWT| API[Workflow Automation API]
+    MCPClient[MCP client] --> MCP[FastMCP adapter]
+    MCP -->|REST + trusted caller context| API
+
+    API -->|SQLAlchemy / Alembic| DB[(PostgreSQL fm_central)]
+    API -->|create notification records| Outbox[(fm_notifications)]
+    Scheduler[Escalation scheduler] -->|idempotent reminder scan| DB
+    Dispatcher[SMTP dispatcher] -->|claim pending email| Outbox
+    Dispatcher -->|SMTP| Mail[Mailpit / SMTP relay]
+    Mail --> Recipient[Email recipient]
+```
+
+Control Plane và MCP không truy cập database trực tiếp. Workflow Automation API
+là boundary duy nhất thực thi RBAC, transaction, audit và state machine.
+
+## Use cases
+
+```mermaid
+flowchart LR
+    Requester[Requester] --> Create([Create, update and submit request])
+    Requester --> Track([View request status and notifications])
+    Approver[Approver] --> Pending([View pending approvals])
+    Approver --> Decision([Approve, reject or return request])
+    RiskOwner[Risk owner] --> Risk([Create, assess and mitigate risk])
+    Admin[FM admin] --> Configure([Configure workflows, templates and escalation rules])
+    Admin --> Monitor([View heatmap, overdue requests and notifications])
+    MCPActor[MCP client] --> MCPUse([Call REST-backed MCP tools])
+    Scheduler[Trusted scheduler] --> Escalate([Create overdue reminders])
+    Dispatcher[Trusted dispatcher] --> Deliver([Send queued email by SMTP])
+
+    Create --> Workflow[Workflow Automation API]
+    Pending --> Workflow
+    Decision --> Workflow
+    Risk --> Workflow
+    Configure --> Workflow
+    Monitor --> Workflow
+    MCPUse --> Workflow
+    Escalate --> Workflow
+    Deliver --> Workflow
+```
+
 ## Chạy server
 
 ```bash
@@ -104,3 +150,6 @@ docker compose --profile tools run --rm dispatcher
 Create an `email` notification template for an event code, then queue an email
 notification through `POST /api/v1/notifications`. Template placeholders are
 limited to `{{payload_key}}` or dotted payload fields and do not execute code.
+
+Xem [docs/architecture.md](docs/architecture.md) để có mô tả boundary, database
+ownership, security và cấu hình runtime đầy đủ.
