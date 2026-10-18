@@ -50,6 +50,10 @@ class WorkflowService:
         await self.session.flush()
         self.session.add(RequestStatusHistory(request_id=request.id, to_status="draft", changed_by=self.actor_id))
         self.session.add(AuditLog(entity_type="request", entity_id=request.id, action="created", actor_id=self.actor_id, request_id=request.id))
+        # Đồng bộ timestamp do PostgreSQL trigger duy trì trước khi Pydantic
+        # đọc object ORM để tạo REST response.
+        await self.session.flush()
+        await self.session.refresh(request)
         return request
 
     async def get_request(self, request_id: UUID, lock: bool = False) -> FMRequest:
@@ -70,6 +74,8 @@ class WorkflowService:
         for field, value in data.model_dump(exclude_unset=True).items():
             setattr(request, field, value)
         self.session.add(AuditLog(entity_type="request", entity_id=request.id, action="updated", actor_id=self.actor_id, request_id=request.id))
+        await self.session.flush()
+        await self.session.refresh(request)
         return request
 
     async def submit(self, request_id: UUID) -> FMRequest:
@@ -95,6 +101,8 @@ class WorkflowService:
             ))
         self.session.add(RequestStatusHistory(request_id=request.id, from_status="draft", to_status="in_review", changed_by=self.actor_id))
         self.session.add(AuditLog(entity_type="request", entity_id=request.id, action="submitted", actor_id=self.actor_id, request_id=request.id))
+        await self.session.flush()
+        await self.session.refresh(request)
         return request
 
     async def close(self, request_id: UUID) -> FMRequest:
@@ -106,4 +114,6 @@ class WorkflowService:
         request.status, request.closed_at = "closed", datetime.now(UTC)
         self.session.add(RequestStatusHistory(request_id=request.id, from_status="approved", to_status="closed", changed_by=self.actor_id))
         self.session.add(AuditLog(entity_type="request", entity_id=request.id, action="closed", actor_id=self.actor_id, request_id=request.id))
+        await self.session.flush()
+        await self.session.refresh(request)
         return request
