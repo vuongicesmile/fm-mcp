@@ -42,3 +42,31 @@ class ReminderRead(BaseModel):
     scheduled_at: datetime
     processed_at: datetime | None
     status: str
+
+
+class NotificationTemplateCreate(BaseModel):
+    event_code: str
+    channel: str
+    subject_template: str | None = None
+    body_template: str
+    is_active: bool = True
+
+
+class NotificationTemplateUpdate(BaseModel):
+    subject_template: str | None = None
+    body_template: str | None = None
+    is_active: bool | None = None
+
+
+class NotificationTemplateRead(NotificationTemplateCreate):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+
+class NotificationList(BaseModel):
+    items: list[NotificationRead]
+    total: int
+    offset: int
+    limit: int

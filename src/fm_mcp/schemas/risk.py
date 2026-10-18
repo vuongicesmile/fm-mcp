@@ -56,3 +56,29 @@ class RiskRead(BaseModel):
     created_by: str
     created_at: datetime
     updated_at: datetime
+
+
+class RiskAssessmentRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    risk_id: UUID
+    likelihood: int
+    impact: int
+    risk_score: int
+    assessment_type: str
+    notes: str | None
+    assessed_by: str
+    assessed_at: datetime
+
+
+class RiskList(BaseModel):
+    items: list[RiskRead]
+    total: int = Field(ge=0)
+    offset: int = Field(ge=0)
+    limit: int = Field(ge=1)
+
+
+class RiskHeatmapCell(BaseModel):
+    likelihood: int = Field(ge=1, le=5)
+    impact: int = Field(ge=1, le=5)
+    count: int = Field(ge=0)

@@ -85,3 +85,42 @@ class RequestStatusHistoryRead(BaseModel):
     changed_by: str
     comment: str | None
     changed_at: datetime
+
+
+class WorkflowStepCreate(BaseModel):
+    step_order: int = Field(ge=1)
+    name: str = Field(min_length=1, max_length=200)
+    approver_role: str = Field(min_length=1, max_length=100)
+    approval_mode: str = "any"
+    due_days: int | None = Field(default=None, ge=0)
+    conditions: dict = Field(default_factory=dict)
+
+
+class WorkflowStepUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    approver_role: str | None = Field(default=None, min_length=1, max_length=100)
+    approval_mode: str | None = None
+    due_days: int | None = Field(default=None, ge=0)
+    conditions: dict | None = None
+
+
+class WorkflowDefinitionCreate(BaseModel):
+    code: str = Field(min_length=1, max_length=80)
+    name: str = Field(min_length=1, max_length=200)
+    description: str | None = None
+    version: int = Field(default=1, ge=1)
+    is_active: bool = True
+    steps: list[WorkflowStepCreate] = Field(default_factory=list)
+
+
+class WorkflowDefinitionUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    description: str | None = None
+    is_active: bool | None = None
+
+
+class RequestList(BaseModel):
+    items: list[RequestRead]
+    total: int = Field(ge=0)
+    offset: int = Field(ge=0)
+    limit: int = Field(ge=1)
