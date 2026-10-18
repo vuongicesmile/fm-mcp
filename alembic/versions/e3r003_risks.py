@@ -23,6 +23,10 @@ def upgrade() -> None:
         sa.CheckConstraint("status IN ('open', 'mitigating', 'mitigated', 'accepted', 'closed')", name="ck_fm_risks_status"))
     op.create_index("ix_fm_risks_status_review_date", "fm_risks", ["status", "review_date"])
     op.create_index("ix_fm_risks_owner_status", "fm_risks", ["owner_id", "status"])
+    op.execute(
+        "CREATE TRIGGER trg_fm_risks_updated_at BEFORE UPDATE ON fm_risks "
+        "FOR EACH ROW EXECUTE FUNCTION fm_mcp_set_updated_at()"
+    )
     op.create_table("fm_risk_assessments",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True), sa.Column("risk_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("likelihood", sa.SmallInteger(), nullable=False), sa.Column("impact", sa.SmallInteger(), nullable=False),

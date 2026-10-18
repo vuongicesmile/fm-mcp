@@ -29,3 +29,12 @@ fm-mcp
 
 Unit test mock HTTP client của API khi test MCP adapter. Integration test chạy
 với PostgreSQL test database riêng và chỉ ở đó mới chạy migration của module.
+
+## Migration
+
+Các migration của EPIC 3 nằm trong `alembic/versions` và dùng version table
+`alembic_version_fm_mcp`. Chỉ chạy chúng với database development/test riêng:
+
+```bash
+FM_ENV=test DATABASE_URL=postgresql+asyncpg://... ./scripts/migrate.sh
+```

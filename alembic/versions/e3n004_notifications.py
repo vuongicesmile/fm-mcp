@@ -31,6 +31,11 @@ def upgrade() -> None:
         sa.CheckConstraint("channel IN ('email', 'teams', 'in_app')", name="ck_fm_notifications_channel"),
         sa.CheckConstraint("status IN ('pending', 'sending', 'sent', 'failed', 'cancelled')", name="ck_fm_notifications_status"),
         sa.CheckConstraint("attempt_count >= 0", name="ck_fm_notifications_attempt_count"))
+    op.execute(
+        "CREATE TRIGGER trg_fm_notification_templates_updated_at "
+        "BEFORE UPDATE ON fm_notification_templates FOR EACH ROW "
+        "EXECUTE FUNCTION fm_mcp_set_updated_at()"
+    )
     op.create_index("ix_fm_notifications_status_scheduled_at", "fm_notifications", ["status", "scheduled_at"])
     op.create_table("fm_escalation_rules",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True), sa.Column("workflow_definition_id", postgresql.UUID(as_uuid=True), nullable=False),

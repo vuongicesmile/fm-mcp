@@ -11,6 +11,17 @@ depends_on = None
 
 
 def upgrade() -> None:
+    # Giữ updated_at nhất quán cả khi dữ liệu được cập nhật ngoài ORM.
+    op.execute(
+        """
+        CREATE FUNCTION fm_mcp_set_updated_at() RETURNS trigger AS $$
+        BEGIN
+            NEW.updated_at = NOW();
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+        """
+    )
     op.create_table(
         "fm_workflow_definitions",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
@@ -71,6 +82,16 @@ def upgrade() -> None:
         ("ix_fm_requests_requester_created_at", ["requester_id", "created_at"]),
     ):
         op.create_index(name, "fm_requests", columns)
+    op.execute(
+        "CREATE TRIGGER trg_fm_workflow_definitions_updated_at "
+        "BEFORE UPDATE ON fm_workflow_definitions FOR EACH ROW "
+        "EXECUTE FUNCTION fm_mcp_set_updated_at()"
+    )
+    op.execute(
+        "CREATE TRIGGER trg_fm_requests_updated_at "
+        "BEFORE UPDATE ON fm_requests FOR EACH ROW "
+        "EXECUTE FUNCTION fm_mcp_set_updated_at()"
+    )
     op.create_table(
         "fm_request_status_history",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
@@ -90,3 +111,4 @@ def downgrade() -> None:
     op.drop_table("fm_requests")
     op.drop_table("fm_workflow_steps")
     op.drop_table("fm_workflow_definitions")
+    op.execute("DROP FUNCTION fm_mcp_set_updated_at()")
