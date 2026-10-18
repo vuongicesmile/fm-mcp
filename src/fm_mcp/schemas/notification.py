@@ -4,7 +4,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class NotificationRead(BaseModel):
@@ -85,6 +85,12 @@ class NotificationCreate(BaseModel):
     event_code: str = Field(min_length=1, max_length=80)
     payload: dict = Field(default_factory=dict)
     scheduled_at: datetime | None = None
+
+    @model_validator(mode="after")
+    def require_email_address(self) -> "NotificationCreate":
+        if self.channel == "email" and not self.recipient_address:
+            raise ValueError("recipient_address is required for email notifications")
+        return self
 
 
 class EscalationRuleCreate(BaseModel):

@@ -89,3 +89,18 @@ docker compose --profile tools run --rm scheduler
 
 The database unique constraint makes repeated scans idempotent for an approval
 step, escalation rule and scheduled time.
+
+### Email and Mailpit
+
+Email notifications are stored first in `fm_notifications`, then dispatched by
+a trusted worker with row locking. Set `FM_SMTP_*` in deployment. Local Compose
+provides Mailpit at `http://localhost:8025` and an SMTP relay on port `1025`:
+
+```bash
+docker compose up -d mailpit
+docker compose --profile tools run --rm dispatcher
+```
+
+Create an `email` notification template for an event code, then queue an email
+notification through `POST /api/v1/notifications`. Template placeholders are
+limited to `{{payload_key}}` or dotted payload fields and do not execute code.
