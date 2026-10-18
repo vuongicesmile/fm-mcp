@@ -21,11 +21,13 @@ from fm_mcp.schemas.workflow import RequestCreate, RequestUpdate
 
 
 class WorkflowService:
+    """Xử lý lifecycle request; mọi write chạy trong transaction của router."""
     def __init__(self, session: AsyncSession, actor_id: str) -> None:
         self.session = session
         self.actor_id = actor_id
 
     async def create_request(self, data: RequestCreate) -> FMRequest:
+        """Tạo draft do current user sở hữu, đồng thời ghi history và audit."""
         workflow = await self.session.scalar(
             select(WorkflowDefinition).where(
                 WorkflowDefinition.id == data.workflow_definition_id,
@@ -59,6 +61,7 @@ class WorkflowService:
         return request
 
     async def get_request(self, request_id: UUID, lock: bool = False) -> FMRequest:
+        """Đọc request; ``lock=True`` dùng trước khi đổi trạng thái để tránh race condition."""
         statement = select(FMRequest).where(FMRequest.id == request_id)
         if lock:
             statement = statement.with_for_update()
@@ -68,6 +71,7 @@ class WorkflowService:
         return request
 
     async def update_draft(self, request_id: UUID, data: RequestUpdate) -> FMRequest:
+        """Chỉ requester được sửa request ở trạng thái draft hoặc returned."""
         request = await self.get_request(request_id, lock=True)
         if request.requester_id != self.actor_id:
             raise HTTPException(status_code=403, detail="Only the requester may update this request")
@@ -81,6 +85,7 @@ class WorkflowService:
         return request
 
     async def submit(self, request_id: UUID) -> FMRequest:
+        """Chuyển draft sang in_review và materialize workflow step thành approval step."""
         request = await self.get_request(request_id, lock=True)
         if request.requester_id != self.actor_id:
             raise HTTPException(status_code=403, detail="Only the requester may submit this request")
@@ -96,6 +101,8 @@ class WorkflowService:
         request.status = "in_review"
         request.submitted_at = datetime.now(UTC)
         for step in workflow.steps:
+            # Control Plane/organizational service resolve user IDs trước khi
+            # publish workflow definition; client không thể chọn approver ở đây.
             approver_ids = step.conditions.get("approver_ids", [])
             if not isinstance(approver_ids, list) or not all(isinstance(item, str) and item for item in approver_ids):
                 raise HTTPException(status_code=422, detail="workflow step conditions.approver_ids must be a list of user IDs")
@@ -120,6 +127,7 @@ class WorkflowService:
         return request
 
     async def close(self, request_id: UUID) -> FMRequest:
+        """Đóng request đã được approve; history/audit là immutable record."""
         request = await self.get_request(request_id, lock=True)
         if request.requester_id != self.actor_id:
             raise HTTPException(status_code=403, detail="Only the requester may close this request")

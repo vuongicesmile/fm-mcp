@@ -13,6 +13,7 @@ from fm_mcp.schemas.risk import RiskAssessmentCreate, RiskCreate, RiskUpdate
 
 
 class RiskService:
+    """Risk Register rules; owner/creator/admin mới có quyền thay đổi risk."""
     def __init__(self, session: AsyncSession, actor_id: str, roles: frozenset[str]) -> None:
         self.session, self.actor_id, self.roles = session, actor_id, roles
 
@@ -20,6 +21,7 @@ class RiskService:
         return "fm_admin" in self.roles or risk.created_by == self.actor_id or risk.owner_id == self.actor_id
 
     async def create(self, data: RiskCreate) -> Risk:
+        """Tạo risk code, validate request link (nếu có) và ghi audit."""
         if data.request_id and not await self.session.get(FMRequest, data.request_id):
             raise HTTPException(status_code=404, detail="Request not found")
         risk = Risk(
@@ -42,6 +44,7 @@ class RiskService:
         return risk
 
     async def update(self, risk_id: UUID, data: RiskUpdate) -> Risk:
+        """Lock risk trước khi update để audit phản ánh đúng version thay đổi."""
         risk = await self.session.scalar(select(Risk).where(Risk.id == risk_id).with_for_update())
         if risk is None:
             raise HTTPException(status_code=404, detail="Risk not found")
@@ -72,6 +75,7 @@ class RiskService:
         return items, total or 0
 
     async def assess(self, risk_id: UUID, data: RiskAssessmentCreate) -> RiskAssessment:
+        """Lưu assessment; score mặc định là likelihood × impact theo schema 1–5."""
         risk = await self.get(risk_id)
         score = data.risk_score if data.risk_score is not None else data.likelihood * data.impact
         assessment = RiskAssessment(
@@ -91,6 +95,7 @@ class RiskService:
         )
 
     async def heatmap(self) -> list[tuple[int, int, int]]:
+        """Đếm assessment mới nhất của mỗi risk theo ô likelihood/impact."""
         # DISTINCT ON is PostgreSQL-specific and selects the newest assessment per risk.
         latest = (
             select(RiskAssessment.risk_id, RiskAssessment.likelihood, RiskAssessment.impact)

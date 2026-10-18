@@ -30,6 +30,7 @@ class ApprovalService:
         self.roles = roles
 
     async def pending(self, offset: int, limit: int) -> tuple[list[ApprovalStep], int]:
+        """Trả step current user xử lý được và không bị block bởi step trước."""
         statement = (
             select(ApprovalStep)
             .join(FMRequest)
@@ -61,6 +62,7 @@ class ApprovalService:
     async def act(
         self, step_id: UUID, action_name: str, comment: str | None, idempotency_key: str | None
     ) -> tuple[ApprovalStep, FMRequest, ApprovalAction]:
+        """Apply approve/reject/return atomically; retry cùng key trả action cũ."""
         if idempotency_key:
             prior_action = await self.session.scalar(
                 select(ApprovalAction).where(ApprovalAction.idempotency_key == idempotency_key)
@@ -76,6 +78,8 @@ class ApprovalService:
                     raise HTTPException(status_code=409, detail="Request was removed")
                 return step, request, prior_action
 
+        # Lock step và request trước khi kiểm tra quyền/trạng thái để hai approver
+        # không thể cùng hoàn tất một approval step theo cách mâu thuẫn.
         step = await self.session.scalar(
             select(ApprovalStep)
             .options(selectinload(ApprovalStep.assignments))
@@ -131,6 +135,7 @@ class ApprovalService:
         return {"approve": "approved", "reject": "rejected", "return": "returned"}[action_name]
 
     async def _approve(self, step: ApprovalStep, request: FMRequest, now: datetime) -> None:
+        """Áp dụng semantics any/all và approve request khi không còn step kế tiếp."""
         if step.assignments:
             approved = all(item.status == "approved" for item in step.assignments)
             if step.approval_mode == "any" and any(item.status == "approved" for item in step.assignments):
@@ -163,6 +168,7 @@ class ApprovalService:
     async def _terminate(
         self, step: ApprovalStep, request: FMRequest, action_name: str, comment: str | None, now: datetime
     ) -> None:
+        """Reject hoặc return dừng các step còn lại và đổi trạng thái request."""
         target = "rejected" if action_name == "reject" else "returned"
         step.status, step.started_at, step.completed_at = target, step.started_at or now, now
         for item in step.assignments:
@@ -188,6 +194,7 @@ class ApprovalService:
         ))
 
     async def history(self, step_id: UUID) -> list[ApprovalAction]:
+        """Lấy audit-like action history khi caller là approver hoặc admin."""
         step = await self.session.scalar(
             select(ApprovalStep).options(selectinload(ApprovalStep.assignments)).where(ApprovalStep.id == step_id)
         )

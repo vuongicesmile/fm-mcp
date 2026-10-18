@@ -31,6 +31,7 @@ class NotificationDeliveryWorker:
         self.sender = sender or SMTPEmailSender()
 
     async def run_once(self, limit: int = 100) -> int:
+        """Gửi tối đa ``limit`` email due; một failure được hẹn retry thay vì loop ngay."""
         sent = 0
         for _ in range(limit):
             delivery = await self._claim()
@@ -46,6 +47,7 @@ class NotificationDeliveryWorker:
         return sent
 
     async def _claim(self) -> EmailDelivery | None:
+        """Claim một email bằng SKIP LOCKED rồi commit trạng thái sending trước SMTP I/O."""
         async with self.sessions() as session:
             async with session.begin():
                 notification = await session.scalar(
@@ -75,6 +77,7 @@ class NotificationDeliveryWorker:
                 return EmailDelivery(notification.id, notification.recipient_address, subject, body)
 
     async def _finalize(self, notification_id: UUID, *, sent: bool, error: str | None = None) -> None:
+        """Ghi kết quả delivery và thời gian retry mà không log credentials SMTP."""
         async with self.sessions() as session:
             async with session.begin():
                 notification = await session.scalar(

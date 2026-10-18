@@ -153,3 +153,7 @@ limited to `{{payload_key}}` or dotted payload fields and do not execute code.
 
 Xem [docs/architecture.md](docs/architecture.md) để có mô tả boundary, database
 ownership, security và cấu hình runtime đầy đủ.
+
+Người mới nên đọc [docs/onboarding.md](docs/onboarding.md): tài liệu này có
+code map, sequence diagram cho request/approval/email và giải thích function
+chính theo từng module.

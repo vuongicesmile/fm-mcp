@@ -31,6 +31,7 @@ from fm_mcp.schemas.notification import EscalationRuleCreate, EscalationRuleUpda
 
 
 class NotificationService:
+    """Quản lý notification outbox và escalation record, không gửi SMTP trực tiếp."""
     def __init__(self, session: AsyncSession, actor_id: str, roles: frozenset[str]) -> None:
         self.session, self.actor_id, self.roles = session, actor_id, roles
 
@@ -49,6 +50,7 @@ class NotificationService:
         return list((await self.session.scalars(statement.offset(offset).limit(limit))).all()), total or 0
 
     async def queue(self, data: NotificationCreate) -> Notification:
+        """Lưu notification pending sau khi chọn template active theo event/channel."""
         self._admin()
         if data.request_id and not await self.session.get(FMRequest, data.request_id):
             raise HTTPException(status_code=404, detail="Request not found")
@@ -63,6 +65,7 @@ class NotificationService:
         return item
 
     async def create_template(self, data: NotificationTemplateCreate) -> NotificationTemplate:
+        """Admin tạo template tin cậy; payload rendering xảy ra ở worker."""
         self._admin()
         template = NotificationTemplate(**data.model_dump())
         self.session.add(template)
@@ -106,6 +109,7 @@ class NotificationService:
         return rule
 
     async def overdue_requests(self, offset: int, limit: int) -> tuple[list[FMRequest], int]:
+        """Admin xem request đã quá due_at nhưng chưa đóng/approve."""
         self._admin()
         filters = [FMRequest.due_at.is_not(None), FMRequest.due_at < datetime.now(UTC), FMRequest.status.in_(("draft", "submitted", "in_review", "returned"))]
         statement = select(FMRequest).where(*filters).order_by(FMRequest.due_at).offset(offset).limit(limit)
