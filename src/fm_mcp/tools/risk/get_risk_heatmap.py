@@ -1,0 +1,1 @@
+"""Get risk heatmap data."""
