@@ -55,14 +55,16 @@ def register_tools(mcp: FastMCP) -> None:
         title: str,
         description: str | None = None,
         priority: str = "medium",
+        context: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """Tạo FM request mới qua Workflow Automation API."""
+        """Tạo FM request mới; context chứa dẫn chứng đã được Control Plane xác thực."""
         result = _call("POST", "/api/v1/requests", {
             "workflow_definition_id": workflow_definition_id,
             "request_type": request_type,
             "title": title,
             "description": description,
             "priority": priority,
+            "context": context or {},
         })
         assert isinstance(result, dict)
         return result

@@ -3,7 +3,7 @@
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -32,6 +32,8 @@ class WorkflowDefinitionRead(BaseModel):
 
 
 class RequestCreate(BaseModel):
+    model_config = ConfigDict(allow_inf_nan=False)
+
     workflow_definition_id: UUID
     request_type: str = Field(max_length=50)
     title: str = Field(min_length=1, max_length=255)
@@ -42,6 +44,7 @@ class RequestCreate(BaseModel):
     estimated_value: Decimal | None = Field(default=None, ge=0)
     currency: str | None = Field(default=None, min_length=3, max_length=3)
     due_at: datetime | None = None
+    context: dict[str, Any] = Field(default_factory=dict, max_length=24000)
 
 
 class RequestUpdate(BaseModel):
@@ -63,6 +66,7 @@ class RequestRead(BaseModel):
     request_type: str
     title: str
     description: str | None
+    context: dict[str, Any]
     status: str
     priority: str
     requester_id: str
