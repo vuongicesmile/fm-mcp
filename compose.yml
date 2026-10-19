@@ -51,12 +51,15 @@ services:
       FM_API_TIMEOUT: "30"
       FM_MCP_DEV_USER_ID: local-developer
       FM_MCP_DEV_ROLES: fm_admin
+      FM_MCP_TRANSPORT: streamable-http
+      FM_MCP_HOST: 0.0.0.0
+      FM_MCP_PORT: "8000"
+      FM_MCP_PATH: /mcp
+    ports:
+      - "127.0.0.1:${FM_MCP_HOST_PORT:-8003}:8000"
     depends_on:
       api:
         condition: service_started
-    profiles: ["tools"]
-    stdin_open: true
-    tty: true
 
   scheduler:
     build: .

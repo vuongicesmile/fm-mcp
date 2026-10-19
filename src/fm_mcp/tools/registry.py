@@ -32,6 +32,23 @@ def register_tools(mcp: FastMCP) -> None:
         return result
 
     @mcp.tool()
+    def create_workflow(
+        code: str,
+        name: str,
+        description: str | None = None,
+        steps: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        """Tạo và publish workflow definition; steps phải chứa approver_ids trong conditions."""
+        result = _call("POST", "/api/v1/workflows", {
+            "code": code,
+            "name": name,
+            "description": description,
+            "steps": steps or [],
+        })
+        assert isinstance(result, dict)
+        return result
+
+    @mcp.tool()
     def create_request(
         workflow_definition_id: str,
         request_type: str,
@@ -47,6 +64,13 @@ def register_tools(mcp: FastMCP) -> None:
             "description": description,
             "priority": priority,
         })
+        assert isinstance(result, dict)
+        return result
+
+    @mcp.tool()
+    def list_requests() -> dict[str, Any]:
+        """Lấy các request của danh tính MCP hiện tại, gồm draft và request đã gửi."""
+        result = _call("GET", "/api/v1/requests")
         assert isinstance(result, dict)
         return result
 

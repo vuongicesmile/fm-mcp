@@ -7,13 +7,14 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from fm_mcp.api.dependencies import CurrentUser, get_current_user
-from fm_mcp.domain.models.workflow import FMRequest, RequestStatusHistory, WorkflowDefinition
+from fm_mcp.api.dependencies import CurrentUser, get_current_user, require_role
+from fm_mcp.domain.models.workflow import FMRequest, RequestStatusHistory, WorkflowDefinition, WorkflowStep
 from fm_mcp.domain.services.workflow import WorkflowService
 from fm_mcp.domain.services.notification import NotificationService
 from fm_mcp.infrastructure.database import get_db_session
 from fm_mcp.schemas.workflow import (
     RequestCreate, RequestList, RequestRead, RequestStatusHistoryRead, RequestUpdate, WorkflowDefinitionRead,
+    WorkflowDefinitionCreate,
 )
 
 router = APIRouter(prefix="/api/v1", tags=["workflow"])
@@ -23,6 +24,34 @@ router = APIRouter(prefix="/api/v1", tags=["workflow"])
 async def list_workflows(session: AsyncSession = Depends(get_db_session), _: CurrentUser = Depends(get_current_user)):
     result = await session.scalars(select(WorkflowDefinition).where(WorkflowDefinition.is_active.is_(True)).options(selectinload(WorkflowDefinition.steps)))
     return list(result.unique())
+
+
+@router.post("/workflows", response_model=WorkflowDefinitionRead, status_code=status.HTTP_201_CREATED)
+async def create_workflow(
+    data: WorkflowDefinitionCreate,
+    session: AsyncSession = Depends(get_db_session),
+    _: CurrentUser = Depends(require_role("fm_admin")),
+):
+    """Publish a workflow definition; only FM administrators may choose approval assignments."""
+    async with session.begin():
+        workflow = WorkflowDefinition(
+            code=data.code,
+            name=data.name,
+            description=data.description,
+            version=data.version,
+            is_active=data.is_active,
+        )
+        session.add(workflow)
+        await session.flush()
+        for step in data.steps:
+            session.add(WorkflowStep(workflow_definition_id=workflow.id, **step.model_dump()))
+    result = await session.scalar(
+        select(WorkflowDefinition)
+        .where(WorkflowDefinition.id == workflow.id)
+        .options(selectinload(WorkflowDefinition.steps))
+    )
+    assert result is not None
+    return result
 
 
 @router.post("/requests", response_model=RequestRead, status_code=status.HTTP_201_CREATED)
