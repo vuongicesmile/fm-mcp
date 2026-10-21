@@ -43,6 +43,7 @@ class WorkflowService:
             title=data.title,
             description=data.description,
             priority=data.priority,
+            context=data.context,
             requester_id=self.actor_id,
             department_id=data.department_id,
             campus_id=data.campus_id,

@@ -115,6 +115,9 @@ class FMRequest(UpdatedAtMixin, Base):
     priority: Mapped[str] = mapped_column(
         String(20), nullable=False, default="medium", server_default=text("'medium'")
     )
+    context: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
     requester_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     department_id: Mapped[str | None] = mapped_column(String(100), index=True)
     campus_id: Mapped[str | None] = mapped_column(String(100), index=True)

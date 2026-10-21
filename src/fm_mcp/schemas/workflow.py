@@ -37,6 +37,7 @@ class RequestCreate(BaseModel):
     title: str = Field(min_length=1, max_length=255)
     description: str | None = None
     priority: Literal["low", "medium", "high", "critical"] = "medium"
+    context: dict = Field(default_factory=dict)
     department_id: str | None = Field(default=None, max_length=100)
     campus_id: str | None = Field(default=None, max_length=100)
     estimated_value: Decimal | None = Field(default=None, ge=0)
@@ -65,6 +66,7 @@ class RequestRead(BaseModel):
     description: str | None
     status: str
     priority: str
+    context: dict
     requester_id: str
     department_id: str | None
     campus_id: str | None
