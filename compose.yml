@@ -23,8 +23,6 @@ services:
       FM_SMTP_HOST: mailpit
       FM_SMTP_PORT: "1025"
       FM_SMTP_FROM_ADDRESS: fm-workflow@example.test
-    ports:
-      - "8000:8000"
     depends_on:
       postgres:
         condition: service_healthy
