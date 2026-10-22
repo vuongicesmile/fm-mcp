@@ -30,6 +30,7 @@ dev = [
 
 [project.scripts]
 fm-mcp = "fm_mcp.main:main"
+fm-mcp-http = "fm_mcp.http:main"
 fm-workflow-api = "fm_mcp.api.main:run"
 
 [tool.hatch.build.targets.wheel]
