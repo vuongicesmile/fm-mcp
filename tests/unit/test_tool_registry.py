@@ -65,6 +65,9 @@ def test_every_registered_tool_maps_to_its_rest_endpoint(tools, monkeypatch):
         "sync_data": ("POST", "/connections/bms_main/sync"),
         "cancel_data_sync": ("POST", "/connections/bms_main/capture/cancel"),
         "retry_data_sync": ("POST", "/connections/bms_main/sync/retry"),
+        "list_raw_data_assets": ("GET", "/data-profiling/assets"),
+        "profile_raw_data": ("POST", "/data-profiling/runs"),
+        "get_raw_data_profile": ("GET", "/data-profiling/runs/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
     }
     arguments = {
         "create_workflow": ("maintenance", "Maintenance", None, [{"step_order": 1}]),
@@ -88,15 +91,17 @@ def test_every_registered_tool_maps_to_its_rest_endpoint(tools, monkeypatch):
         "sync_data": ("bms_main", "sync-key-123"),
         "cancel_data_sync": ("bms_main",),
         "retry_data_sync": ("bms_main",),
+        "profile_raw_data": ("bms_main", "electric_meter"),
+        "get_raw_data_profile": ("a" * 32,),
     }
 
     def fake_call(method, path, payload=None, extra_headers=None):
         calls.append((method, path, payload, extra_headers))
-        return [] if method == "GET" and path.endswith(("workflows", "history", "heatmap")) else {}
+        return [] if method == "GET" and path.endswith(("workflows", "history", "heatmap", "assets")) else {}
 
     monkeypatch.setattr(_client, "_call", fake_call)
     for function in registry.ALL_TOOLS:
-        if function.__module__.startswith("fm_mcp.tools.collector"):
+        if function.__module__.startswith(("fm_mcp.tools.collector", "fm_mcp.tools.profiling")):
             monkeypatch.setattr(importlib.import_module(function.__module__), "call", fake_call)
     assert set(tools) == set(expected)
     for name, function in tools.items():
