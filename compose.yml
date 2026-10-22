@@ -44,19 +44,23 @@ services:
 
   mcp:
     build: .
-    command: ["fm-mcp"]
+    command: ["fm-mcp-http"]
     environment:
       FM_ENV: development
       FM_WORKFLOW_API_URL: http://api:8000
       FM_API_TIMEOUT: "30"
       FM_MCP_DEV_USER_ID: local-developer
       FM_MCP_DEV_ROLES: fm_admin
+      FM_COLLECTOR_CONTROL_PLANE_URL: ${FM_COLLECTOR_CONTROL_PLANE_URL:-http://host.docker.internal:8000}
+      FM_COLLECTOR_ORG_ID: ${FM_COLLECTOR_ORG_ID:-rmit_fm}
+      FM_COLLECTOR_API_TOKEN: ${FM_COLLECTOR_API_TOKEN:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       api:
         condition: service_started
-    profiles: ["tools"]
-    stdin_open: true
-    tty: true
+    ports:
+      - "8001:8000"
 
   scheduler:
     build: .
