@@ -16,6 +16,9 @@ class Settings:
     workflow_api_audience: str = os.getenv("FM_WORKFLOW_API_AUDIENCE", "fm-workflow-api")
     mcp_dev_user_id: str | None = os.getenv("FM_MCP_DEV_USER_ID")
     mcp_dev_roles: str = os.getenv("FM_MCP_DEV_ROLES", "fm_admin")
+    collector_control_plane_url: str = os.getenv("FM_COLLECTOR_CONTROL_PLANE_URL", "http://host.docker.internal:8000")
+    collector_org_id: str | None = os.getenv("FM_COLLECTOR_ORG_ID")
+    collector_api_token: str | None = os.getenv("FM_COLLECTOR_API_TOKEN")
 
 
 settings = Settings()

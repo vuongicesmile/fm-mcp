@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import importlib
 from dataclasses import replace
 from datetime import UTC, datetime
 from uuid import UUID
@@ -58,6 +59,12 @@ def test_every_registered_tool_maps_to_its_rest_endpoint(tools, monkeypatch):
         "get_notifications": ("GET", "/api/v1/notifications"),
         "send_notification": ("POST", "/api/v1/notifications"),
         "get_overdue_requests": ("GET", "/api/v1/requests/overdue"),
+        "test_data_source": ("POST", "/connections/bms_main/test"),
+        "get_data_sync_status": ("GET", "/connections/bms_main/capture/status"),
+        "list_data_sync_jobs": ("GET", "/connections/bms_main/capture/jobs?limit=20"),
+        "sync_data": ("POST", "/connections/bms_main/sync"),
+        "cancel_data_sync": ("POST", "/connections/bms_main/capture/cancel"),
+        "retry_data_sync": ("POST", "/connections/bms_main/sync/retry"),
     }
     arguments = {
         "create_workflow": ("maintenance", "Maintenance", None, [{"step_order": 1}]),
@@ -75,6 +82,12 @@ def test_every_registered_tool_maps_to_its_rest_endpoint(tools, monkeypatch):
         "get_risk_register": ("open",),
         "assess_risk": (RISK_ID, 3, 4, "initial", "Observed"),
         "send_notification": ("fm-owner", "fm@example.test", "request.created", "Request created", "Created", REQUEST_ID),
+        "test_data_source": ("bms_main",),
+        "get_data_sync_status": ("bms_main",),
+        "list_data_sync_jobs": ("bms_main",),
+        "sync_data": ("bms_main", "sync-key-123"),
+        "cancel_data_sync": ("bms_main",),
+        "retry_data_sync": ("bms_main",),
     }
 
     def fake_call(method, path, payload=None, extra_headers=None):
@@ -82,6 +95,9 @@ def test_every_registered_tool_maps_to_its_rest_endpoint(tools, monkeypatch):
         return [] if method == "GET" and path.endswith(("workflows", "history", "heatmap")) else {}
 
     monkeypatch.setattr(_client, "_call", fake_call)
+    for function in registry.ALL_TOOLS:
+        if function.__module__.startswith("fm_mcp.tools.collector"):
+            monkeypatch.setattr(importlib.import_module(function.__module__), "call", fake_call)
     assert set(tools) == set(expected)
     for name, function in tools.items():
         function(*arguments[name]) if name in arguments else function()
