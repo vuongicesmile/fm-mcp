@@ -109,6 +109,22 @@ docker compose run --rm migrate
 docker compose up -d api
 ```
 
+### Portal thử nghiệm request
+
+Trong tenant `rmit_fm`, người có quyền quản lý tenant có thể mở **Yêu cầu FM**
+để chạy luồng tạo bản nháp, gửi duyệt và xem lịch sử qua các tool
+`list_workflows`, `list_requests`, `create_request`, `submit_request`,
+`get_request` và `get_request_history` trên FM MCP đã đăng ký. Đây là luồng
+dev/demo: thao tác dùng danh tính đã cấu hình tại FM MCP server, không phải
+định danh người đăng nhập Portal. Không bật luồng này cho nghiệp vụ production
+trước khi hoàn thành truyền/ủy quyền danh tính người dùng.
+
+Chạy test tool adapter và luồng request bằng:
+
+```bash
+pytest tests/unit -q
+```
+
 The API is available at `http://localhost:8000`, with OpenAPI documentation at
 `http://localhost:8000/docs`. Development authentication uses
 `X-Authenticated-User-Id` and `X-Authenticated-Roles`; production requires a

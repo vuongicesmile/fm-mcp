@@ -50,6 +50,12 @@ services:
       FM_COLLECTOR_CONTROL_PLANE_URL: ${FM_COLLECTOR_CONTROL_PLANE_URL:-http://host.docker.internal:8000}
       FM_COLLECTOR_ORG_ID: ${FM_COLLECTOR_ORG_ID:-rmit_fm}
       FM_COLLECTOR_API_TOKEN: ${FM_COLLECTOR_API_TOKEN:-}
+      DATABASE_URL: postgresql+asyncpg://fm_user:fm_local_password@postgres:5432/fm_central
+      FM_PROFILING_CLICKHOUSE_URL: ${FM_PROFILING_CLICKHOUSE_URL:-http://host.docker.internal:8123}
+      FM_PROFILING_CLICKHOUSE_USER: ${FM_PROFILING_CLICKHOUSE_USER:-${CLICKHOUSE_USER:-titan}}
+      FM_PROFILING_CLICKHOUSE_PASSWORD: ${FM_PROFILING_CLICKHOUSE_PASSWORD:-${CLICKHOUSE_PASSWORD:-titan-dev}}
+      FM_PROFILING_RAW_SCHEMA: ${FM_PROFILING_RAW_SCHEMA:-t_rmit_fm_raw}
+      FM_PROFILING_ORG_ID: ${FM_PROFILING_ORG_ID:-rmit_fm}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

@@ -19,6 +19,17 @@ class Settings:
     collector_control_plane_url: str = os.getenv("FM_COLLECTOR_CONTROL_PLANE_URL", "http://host.docker.internal:8000")
     collector_org_id: str | None = os.getenv("FM_COLLECTOR_ORG_ID")
     collector_api_token: str | None = os.getenv("FM_COLLECTOR_API_TOKEN")
+    # Data profiling is owned by FM MCP.  The Control Plane only dispatches MCP
+    # calls and must not receive warehouse credentials or profiling SQL.
+    profiling_clickhouse_url: str = os.getenv(
+        "FM_PROFILING_CLICKHOUSE_URL", "http://host.docker.internal:8123"
+    )
+    profiling_clickhouse_user: str = os.getenv("FM_PROFILING_CLICKHOUSE_USER", "titan")
+    profiling_clickhouse_password: str = os.getenv("FM_PROFILING_CLICKHOUSE_PASSWORD", "titan-dev")
+    profiling_raw_schema: str = os.getenv("FM_PROFILING_RAW_SCHEMA", "t_rmit_fm_raw")
+    profiling_org_id: str = os.getenv(
+        "FM_PROFILING_ORG_ID", os.getenv("FM_COLLECTOR_ORG_ID", "rmit_fm")
+    )
 
 
 settings = Settings()

@@ -65,9 +65,6 @@ def test_every_registered_tool_maps_to_its_rest_endpoint(tools, monkeypatch):
         "sync_data": ("POST", "/connections/bms_main/sync"),
         "cancel_data_sync": ("POST", "/connections/bms_main/capture/cancel"),
         "retry_data_sync": ("POST", "/connections/bms_main/sync/retry"),
-        "list_raw_data_assets": ("GET", "/data-profiling/assets"),
-        "profile_raw_data": ("POST", "/data-profiling/runs"),
-        "get_raw_data_profile": ("GET", "/data-profiling/runs/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
     }
     arguments = {
         "create_workflow": ("maintenance", "Maintenance", None, [{"step_order": 1}]),
@@ -91,8 +88,6 @@ def test_every_registered_tool_maps_to_its_rest_endpoint(tools, monkeypatch):
         "sync_data": ("bms_main", "sync-key-123"),
         "cancel_data_sync": ("bms_main",),
         "retry_data_sync": ("bms_main",),
-        "profile_raw_data": ("bms_main", "electric_meter"),
-        "get_raw_data_profile": ("a" * 32,),
     }
 
     def fake_call(method, path, payload=None, extra_headers=None):
@@ -101,10 +96,16 @@ def test_every_registered_tool_maps_to_its_rest_endpoint(tools, monkeypatch):
 
     monkeypatch.setattr(_client, "_call", fake_call)
     for function in registry.ALL_TOOLS:
-        if function.__module__.startswith(("fm_mcp.tools.collector", "fm_mcp.tools.profiling")):
+        if function.__module__.startswith("fm_mcp.tools.collector"):
             monkeypatch.setattr(importlib.import_module(function.__module__), "call", fake_call)
-    assert set(tools) == set(expected)
+    profiling_tools = {
+        "list_data_profiling_assets", "run_data_profiling", "get_data_profiling_run",
+        "get_data_profiling_overview", "get_masked_raw_sample", "seed_data_profiling_demo",
+    }
+    assert set(tools) == set(expected) | profiling_tools
     for name, function in tools.items():
+        if name in profiling_tools:
+            continue
         function(*arguments[name]) if name in arguments else function()
 
     assert len(calls) == len(expected)

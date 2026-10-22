@@ -17,9 +17,10 @@ from fm_mcp.domain.models.workflow import (
     WorkflowDefinition,
     WorkflowStep,
 )
+from fm_mcp.domain.models.profiling import DataProfileRun
 
 __all__ = [
     "ApprovalAction", "ApprovalAssignment", "ApprovalStep", "Attachment", "AuditLog",
     "EscalationRule", "FMRequest", "Notification", "NotificationTemplate", "Reminder",
-    "RequestStatusHistory", "Risk", "RiskAssessment", "WorkflowDefinition", "WorkflowStep",
+    "RequestStatusHistory", "Risk", "RiskAssessment", "WorkflowDefinition", "WorkflowStep", "DataProfileRun",
 ]
