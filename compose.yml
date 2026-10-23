@@ -23,6 +23,7 @@ services:
       FM_SMTP_HOST: mailpit
       FM_SMTP_PORT: "1025"
       FM_SMTP_FROM_ADDRESS: fm-workflow@example.test
+      FM_REQUEST_NOTIFICATION_EMAIL: ${FM_REQUEST_NOTIFICATION_EMAIL:-fm-requests@example.test}
     depends_on:
       postgres:
         condition: service_healthy
@@ -77,20 +78,20 @@ services:
 
   dispatcher:
     build: .
-    command: ["python", "scripts/dispatch_notifications.py"]
+    command: ["python", "scripts/run_notification_dispatcher.py"]
+    restart: unless-stopped
     environment:
       FM_ENV: development
       DATABASE_URL: postgresql+asyncpg://fm_user:fm_local_password@postgres:5432/fm_central
       FM_SMTP_HOST: mailpit
       FM_SMTP_PORT: "1025"
       FM_SMTP_FROM_ADDRESS: fm-workflow@example.test
+      FM_REQUEST_NOTIFICATION_EMAIL: ${FM_REQUEST_NOTIFICATION_EMAIL:-fm-requests@example.test}
     depends_on:
       postgres:
         condition: service_healthy
       mailpit:
         condition: service_started
-    profiles: ["tools"]
-
   mailpit:
     image: axllent/mailpit:v1.29.0
     ports:

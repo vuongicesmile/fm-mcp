@@ -140,9 +140,10 @@ validated JWT from the Control Plane.
 - Risk register: create/update, assessment, latest assessment and heatmap.
   The current score default is likelihood × impact on the existing 1–5 schema;
   confirm the RMIT matrix before production policy is enabled.
-- Notifications: creates delivery records only. Email/Teams delivery must be
-  performed by an existing adapter/worker, so delivery is not falsely treated
-  as atomically committed with the database transaction.
+- Notifications: creating an FM request adds an email to the transactional
+  outbox; the Compose dispatcher continuously delivers it through SMTP.
+  Configure `FM_REQUEST_NOTIFICATION_EMAIL` as the recipient (Mailpit captures
+  it in local development). SMTP delivery is asynchronous and retries failures.
 - Escalation: call the trusted scheduler worker, never a public manual endpoint:
 
 ```bash

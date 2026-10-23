@@ -2,8 +2,8 @@
 
 from functools import lru_cache
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class APISettings(BaseSettings):
@@ -25,6 +25,7 @@ class APISettings(BaseSettings):
     smtp_from_address: str = Field(default="fm-workflow@example.test", validation_alias="FM_SMTP_FROM_ADDRESS")
     smtp_max_attempts: int = Field(default=3, validation_alias="FM_SMTP_MAX_ATTEMPTS")
     smtp_retry_delay_seconds: int = Field(default=60, validation_alias="FM_SMTP_RETRY_DELAY_SECONDS")
+    request_notification_email: str | None = Field(default=None, validation_alias="FM_REQUEST_NOTIFICATION_EMAIL")
 
 
 @lru_cache

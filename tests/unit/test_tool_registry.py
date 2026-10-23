@@ -65,6 +65,8 @@ def test_every_registered_tool_maps_to_its_rest_endpoint(tools, monkeypatch):
         "sync_data": ("POST", "/connections/bms_main/sync"),
         "cancel_data_sync": ("POST", "/connections/bms_main/capture/cancel"),
         "retry_data_sync": ("POST", "/connections/bms_main/sync/retry"),
+        "get_data_sync_run": ("GET", "/pipelines/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+        "get_data_sync_events": ("GET", "/pipelines/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/events?after=0"),
     }
     arguments = {
         "create_workflow": ("maintenance", "Maintenance", None, [{"step_order": 1}]),
@@ -88,6 +90,8 @@ def test_every_registered_tool_maps_to_its_rest_endpoint(tools, monkeypatch):
         "sync_data": ("bms_main", "sync-key-123"),
         "cancel_data_sync": ("bms_main",),
         "retry_data_sync": ("bms_main",),
+        "get_data_sync_run": ("a" * 32,),
+        "get_data_sync_events": ("a" * 32,),
     }
 
     def fake_call(method, path, payload=None, extra_headers=None):

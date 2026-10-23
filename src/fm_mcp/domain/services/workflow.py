@@ -3,14 +3,15 @@
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
-from fastapi import HTTPException, status
-from sqlalchemy import func, select
+from fastapi import HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from fm_mcp.api.settings import api_settings
 from fm_mcp.domain.models.workflow import (
-    ApprovalStep,
     ApprovalAssignment,
+    ApprovalStep,
     AuditLog,
     FMRequest,
     Notification,
@@ -27,7 +28,13 @@ class WorkflowService:
         self.actor_id = actor_id
 
     async def create_request(self, data: RequestCreate) -> FMRequest:
-        """Tạo draft do current user sở hữu, đồng thời ghi history và audit."""
+        """Tạo draft, ghi audit và đưa email xác nhận vào outbox."""
+        recipient_address = api_settings.request_notification_email
+        if not recipient_address:
+            raise HTTPException(
+                status_code=503,
+                detail="FM_REQUEST_NOTIFICATION_EMAIL chưa được cấu hình",
+            )
         workflow = await self.session.scalar(
             select(WorkflowDefinition).where(
                 WorkflowDefinition.id == data.workflow_definition_id,
@@ -55,6 +62,24 @@ class WorkflowService:
         await self.session.flush()
         self.session.add(RequestStatusHistory(request_id=request.id, to_status="draft", changed_by=self.actor_id))
         self.session.add(AuditLog(entity_type="request", entity_id=request.id, action="created", actor_id=self.actor_id, request_id=request.id))
+        self.session.add(Notification(
+            request_id=request.id,
+            recipient_id=self.actor_id,
+            recipient_address=recipient_address,
+            channel="email",
+            event_code="request_created",
+            payload={
+                "subject": f"Yêu cầu FM mới: {request.request_code}",
+                "body": (
+                    f"Yêu cầu FM {request.request_code} đã được tạo.\n\n"
+                    f"Tiêu đề: {request.title}\n"
+                    f"Ưu tiên: {request.priority}\n"
+                    f"Mô tả: {request.description or 'Không có'}"
+                ),
+                "request_code": request.request_code,
+                "title": request.title,
+            },
+        ))
         # Đồng bộ timestamp do PostgreSQL trigger duy trì trước khi Pydantic
         # đọc object ORM để tạo REST response.
         await self.session.flush()
