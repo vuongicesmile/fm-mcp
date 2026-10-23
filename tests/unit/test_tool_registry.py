@@ -21,7 +21,7 @@ class ToolRegistry:
     def __init__(self):
         self.tools = {}
 
-    def tool(self):
+    def tool(self, **_metadata):
         def register(function):
             self.tools[function.__name__] = function
             return function
@@ -67,6 +67,7 @@ def test_every_registered_tool_maps_to_its_rest_endpoint(tools, monkeypatch):
         "retry_data_sync": ("POST", "/connections/bms_main/sync/retry"),
         "get_data_sync_run": ("GET", "/pipelines/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
         "get_data_sync_events": ("GET", "/pipelines/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/events?after=0"),
+        "list_data_sync_runs": ("GET", "/pipelines?connection=&status=&offset=0&limit=20"),
     }
     arguments = {
         "create_workflow": ("maintenance", "Maintenance", None, [{"step_order": 1}]),

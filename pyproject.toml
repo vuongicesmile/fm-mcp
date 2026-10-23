@@ -18,6 +18,7 @@ dependencies = [
   "sqlalchemy[asyncio]>=2.0.0,<3.0",
   "asyncpg>=0.29.0,<1.0",
   "alembic>=1.13.0,<2.0",
+  "psycopg[binary]>=3.2.0,<4.0",
   "PyJWT>=2.8.0,<3.0",
 ]
 
@@ -32,6 +33,7 @@ dev = [
 fm-mcp = "fm_mcp.main:main"
 fm-mcp-http = "fm_mcp.http:main"
 fm-workflow-api = "fm_mcp.api.main:run"
+fm-collector-api = "fm_mcp.collector.api:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/fm_mcp"]

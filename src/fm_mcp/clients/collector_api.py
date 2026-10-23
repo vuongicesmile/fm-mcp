@@ -1,4 +1,4 @@
-"""Client for the tenant-scoped collector contract owned by Titan Control Plane."""
+"""Client for the tenant-scoped FM Collector Orchestration Service."""
 
 from typing import Any
 
@@ -15,14 +15,17 @@ def _org_id() -> str:
 
 def _headers() -> dict[str, str]:
     headers: dict[str, str] = {}
-    if settings.collector_api_token:
-        headers["Authorization"] = f"Bearer {settings.collector_api_token}"
+    if not settings.collector_service_token:
+        raise RuntimeError("FM_COLLECTOR_SERVICE_TOKEN is not configured")
+    headers["Authorization"] = f"Bearer {settings.collector_service_token}"
     return headers
 
 
 def call(method: str, path: str, payload: dict[str, Any] | None = None) -> dict[str, Any] | list[dict[str, Any]]:
-    """Call the configured Control Plane without exposing its credentials to an MCP client."""
-    with httpx.Client(base_url=settings.collector_control_plane_url, timeout=settings.fm_api_timeout) as client:
-        response = client.request(method, f"/api/tenants/{_org_id()}{path}", json=payload, headers=_headers())
-        response.raise_for_status()
+    """Call the configured collector service without exposing its credential to an MCP client."""
+    with httpx.Client(base_url=settings.collector_service_url, timeout=settings.fm_api_timeout, trust_env=False) as client:
+        response = client.request(method, f"/internal/tenants/{_org_id()}{path}", json=payload, headers=_headers())
+        if response.status_code >= 400:
+            # Marker an toàn để gateway giữ HTTP conflict/not-found, không echo response chứa config.
+            raise RuntimeError(f"Collector operation rejected [{response.status_code}]")
         return response.json()

@@ -48,9 +48,9 @@ services:
       FM_API_TIMEOUT: "30"
       FM_MCP_DEV_USER_ID: local-developer
       FM_MCP_DEV_ROLES: fm_admin
-      FM_COLLECTOR_CONTROL_PLANE_URL: ${FM_COLLECTOR_CONTROL_PLANE_URL:-http://host.docker.internal:8000}
       FM_COLLECTOR_ORG_ID: ${FM_COLLECTOR_ORG_ID:-rmit_fm}
-      FM_COLLECTOR_API_TOKEN: ${FM_COLLECTOR_API_TOKEN:-}
+      FM_COLLECTOR_SERVICE_URL: http://collector:8021
+      FM_COLLECTOR_SERVICE_TOKEN: ${FM_COLLECTOR_SERVICE_TOKEN:-}
       DATABASE_URL: postgresql+asyncpg://fm_user:fm_local_password@postgres:5432/fm_central
       FM_PROFILING_CLICKHOUSE_URL: ${FM_PROFILING_CLICKHOUSE_URL:-http://host.docker.internal:8123}
       FM_PROFILING_CLICKHOUSE_USER: ${FM_PROFILING_CLICKHOUSE_USER:-${CLICKHOUSE_USER:-titan}}
@@ -64,6 +64,31 @@ services:
         condition: service_started
     ports:
       - "8001:8000"
+
+  collector:
+    build: .
+    command: ["fm-collector-api"]
+    restart: unless-stopped
+    environment:
+      FM_COLLECTOR_ORG_ID: ${FM_COLLECTOR_ORG_ID:-rmit_fm}
+      FM_COLLECTOR_SERVICE_TOKEN: ${FM_COLLECTOR_SERVICE_TOKEN:-}
+      FM_COLLECTOR_CONTEXT_TOKEN: ${FM_COLLECTOR_CONTEXT_TOKEN:-}
+      FM_COLLECTOR_CONTROL_PLANE_URL: http://titan-api:8000
+      CAPTURE_RUNNER_TOKEN: ${CAPTURE_RUNNER_TOKEN:-}
+      CAPTURE_RUNNER_URL: http://capture-runner:8020
+      CAPTURE_PG_HOST: host.docker.internal
+      CAPTURE_PG_PORT: ${POSTGRES_PORT:-5432}
+      CAPTURE_PG_DATABASE: control_plane
+      CAPTURE_PG_USER: ${POSTGRES_USER:-titan}
+      CAPTURE_PG_PASSWORD: ${POSTGRES_PASSWORD:-titan-dev}
+      TITAN_AIRFLOW_URL: http://airflow-api-server:8080
+      TITAN_AIRFLOW_PUBLIC_URL: ${TITAN_AIRFLOW_PUBLIC_URL:-http://localhost:8080}
+      TITAN_AIRFLOW_USER: ${TITAN_AIRFLOW_USER:-airflow}
+      TITAN_AIRFLOW_PASSWORD: ${TITAN_AIRFLOW_PASSWORD:-}
+      TITAN_AIRFLOW_TOKEN: ${TITAN_AIRFLOW_TOKEN:-}
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    networks: [default, titan-data]
+    ports: ["127.0.0.1:8021:8021"]
 
   scheduler:
     build: .
@@ -100,3 +125,8 @@ services:
 
 volumes:
   fm_mcp_postgres:
+
+networks:
+  titan-data:
+    external: true
+    name: ${TITAN_DATA_NETWORK:-titan-data_default}
