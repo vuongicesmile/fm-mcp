@@ -6,6 +6,10 @@ gọi API đó qua REST. FM Control Plane chỉ điều phối giữa các modul
 
 Xem thiết kế chi tiết tại [docs/architecture.md](docs/architecture.md).
 
+Collector BMS/SPO dùng [Collector Orchestration Service](docs/collector-orchestration.vi.md):
+tool, lifecycle, trạng thái, outbox và DAG Airflow nằm cùng domain trong repo này.
+Titan chỉ giữ gateway/UI và runtime thực thi dlt/dbt.
+
 ## Cài đặt
 
 ```bash

@@ -9,3 +9,9 @@ def connection_path(connection_id: str) -> str:
     if not _CONNECTION_ID.fullmatch(connection_id):
         raise ValueError("connection_id must be a lowercase Titan connection identifier")
     return f"/connections/{connection_id}"
+
+
+def pipeline_path(run_id: str) -> str:
+    if not re.fullmatch(r"[0-9a-f]{32}", run_id):
+        raise ValueError("Invalid pipeline identifier")
+    return f"/pipelines/{run_id}"

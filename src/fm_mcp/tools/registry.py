@@ -15,4 +15,8 @@ ALL_TOOLS = WORKFLOW_TOOLS + APPROVAL_TOOLS + RISK_TOOLS + NOTIFICATION_TOOLS + 
 def register_tools(mcp: FastMCP) -> None:
     """Attach every supported FM MCP tool to a FastMCP server."""
     for tool in ALL_TOOLS:
-        mcp.tool()(tool)
+        if tool in COLLECTOR_TOOLS:
+            write = tool.__name__ in {"sync_data", "cancel_data_sync", "retry_data_sync"}
+            mcp.tool(meta={"titan": {"group": "collector"}}, annotations={"readOnlyHint": not write})(tool)
+        else:
+            mcp.tool()(tool)
