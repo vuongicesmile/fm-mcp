@@ -40,10 +40,14 @@ jobs:
         run: docker compose -f compose.yml config && docker build -t fm-mcp-ci .
       - name: Upgrade isolated PostgreSQL database
         run: ./scripts/migrate.sh
-      - name: Verify EPIC 3 table inventory
+      - name: Verify migrated FM table inventory
         env:
           PGPASSWORD: postgres
         run: |
-          actual="$(psql -h localhost -U postgres -d fm_mcp_test -Atc "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name LIKE 'fm_%';")"
-          test "$actual" -eq 15
+          expected="$(python -c "from fm_mcp.domain import models; from fm_mcp.infrastructure.database import Base; print('\n'.join(sorted(Base.metadata.tables)))")"
+          actual="$(psql -h localhost -U postgres -d fm_mcp_test -Atc "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND left(table_name, 3) = 'fm_' ORDER BY table_name;")"
+          if [ "$actual" != "$expected" ]; then
+            printf 'Expected tables:\n%s\nActual tables:\n%s\n' "$expected" "$actual"
+            exit 1
+          fi
           psql -h localhost -U postgres -d fm_mcp_test -c "SELECT version_num FROM alembic_version_fm_mcp"

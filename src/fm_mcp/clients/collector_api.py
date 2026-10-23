@@ -1,4 +1,4 @@
-"""Client for the tenant-scoped collector contract owned by Titan Control Plane."""
+"""Client for the tenant-scoped FM Collector Orchestration Service."""
 
 from typing import Any
 
@@ -22,7 +22,7 @@ def _headers() -> dict[str, str]:
 
 
 def call(method: str, path: str, payload: dict[str, Any] | None = None) -> dict[str, Any] | list[dict[str, Any]]:
-    """Call the configured Control Plane without exposing its credentials to an MCP client."""
+    """Call the configured collector service without exposing its credential to an MCP client."""
     with httpx.Client(base_url=settings.collector_service_url, timeout=settings.fm_api_timeout, trust_env=False) as client:
         response = client.request(method, f"/internal/tenants/{_org_id()}{path}", json=payload, headers=_headers())
         if response.status_code >= 400:
