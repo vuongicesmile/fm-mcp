@@ -25,6 +25,8 @@ def test_comparison_requires_equal_complete_periods(monkeypatch, actual_days, ex
     result = energy_demo.energy_comparison()
     assert result['change_pct'] == expected
     assert result['complete'] == (actual_days == 25)
+    if actual_days != 25:
+        assert result['daily'] == []
 
 
 @pytest.mark.parametrize('metric,unit', [('electricity', 'kWh'), ('water', 'm³')])
@@ -45,6 +47,11 @@ def test_grouping_units_and_empty_filters(monkeypatch, metric, unit):
     assert result['groups'][0]['label'] == 'demo:METER-A'
     assert result['daily'][0]['day'] == 1
     assert 'metric=' + metric in result['dashboard_url']
+    if metric == 'water':
+        assert 'previous_kwh' not in result
+        assert 'previous_kwh' not in result['rows'][0]
+    else:
+        assert result['previous_kwh'] == result['previous_value']
     assert not energy_demo.energy_comparison(metric=metric, object_type='Consumption' if metric == 'electricity' else 'Energy')['rows']
 
 

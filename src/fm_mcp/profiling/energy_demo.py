@@ -116,9 +116,12 @@ def energy_comparison(building: str = "", equipment: str = "", metric: str = "el
     before = sum(row['previous_kwh'] for row in rows)
     after = sum(row['current_kwh'] for row in rows)
     complete = bool(rows) and days > 0 and all(row['previous_days'] == days and row['current_days'] == days for row in rows)
+    # Không vẽ số 0 từ sumIf như một ngày thực sự không tiêu thụ khi thiếu coverage.
+    if not complete:
+        daily = []
     change = round(100 * (after - before) / before, 2) if before and complete else None
     filters = {"building": building,"equipment": equipment,"metric": metric,"object_type": object_type,"group_by": group_by}
-    return {"demo": True, "dataset": table, "metric": metric,"unit": unit, "previous_value": before,"current_value": after,"groups": list(groups.values()),"daily": daily, "previous_month": str(previous), "current_month": str(current),
+    result = {"demo": True, "dataset": table, "metric": metric,"unit": unit, "previous_value": before,"current_value": after,"groups": list(groups.values()),"daily": daily, "previous_month": str(previous), "current_month": str(current),
             "days": days, "complete": complete, "previous_kwh": before, "current_kwh": after,
             "change_pct": change, "rows": rows, "filters": filters,
             "options": {"building": sorted({row['building'] for row in choices}),"equipment": sorted({row['meter'] for row in choices}),"object_type": [kind]},
@@ -126,3 +129,9 @@ def energy_comparison(building: str = "", equipment: str = "", metric: str = "el
             "message": (f"Dữ liệu demo: so sánh {days} ngày hoàn tất đầu tháng {current:%m/%Y} với cùng {days} ngày tháng {previous:%m/%Y}. "
                         f"{'Điện năng' if metric == 'electricity' else 'Nước tiêu thụ'} tháng này {after:,.1f} {unit}, kỳ trước {before:,.1f} {unit}; thay đổi {change:+.2f}%. "
                         "Tính từ chênh lệch chỉ số công tơ; chưa bao gồm ngày đang diễn ra.") if change is not None else ("Không tìm thấy dữ liệu theo bộ lọc hiện tại." if not rows else "Dữ liệu demo chưa đủ ngày để tính phần trăm so sánh.")}
+    # Giữ alias kWh cho client điện cũ, không gắn nhầm đơn vị cho dữ liệu nước.
+    if metric == 'water':
+        for item in [result, *rows]:
+            item.pop('previous_kwh', None)
+            item.pop('current_kwh', None)
+    return result
