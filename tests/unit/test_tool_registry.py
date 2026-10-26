@@ -106,6 +106,7 @@ def test_every_registered_tool_maps_to_its_rest_endpoint(tools, monkeypatch):
     profiling_tools = {
         "list_data_profiling_assets", "run_data_profiling", "get_data_profiling_run",
         "get_data_profiling_overview", "get_masked_raw_sample", "seed_data_profiling_demo",
+        "seed_bad_data_profiling_demo", "get_bms_dashboard", "get_energy_comparison",
     }
     assert set(tools) == set(expected) | profiling_tools
     for name, function in tools.items():

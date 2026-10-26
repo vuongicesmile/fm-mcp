@@ -7,6 +7,43 @@ from fastapi import HTTPException
 from fm_mcp.domain.models.workflow import FMRequest, Notification
 from fm_mcp.domain.services.workflow import WorkflowService
 from fm_mcp.schemas.workflow import RequestCreate
+from fm_mcp.infrastructure.email import SMTPEmailSender, render_notification_html
+
+
+def test_html_email_escapes_untrusted_content():
+    html = render_notification_html('<img src=x onerror="alert(1)">', 'Title: <script>bad()</script>\n\nDetails & notes')
+    assert '<script>' not in html
+    assert '<img src=x' not in html
+    assert '&lt;script&gt;' in html
+    assert 'Details &amp; notes' in html
+    assert 'Bước tiếp theo' in html
+
+
+def test_smtp_preserves_plain_text_and_adds_html(monkeypatch):
+    messages = []
+
+    class SMTP:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            pass
+
+        def ehlo(self):
+            pass
+
+        def send_message(self, message):
+            messages.append(message)
+
+    monkeypatch.setattr('fm_mcp.infrastructure.email.smtplib.SMTP', SMTP)
+    monkeypatch.setattr('fm_mcp.infrastructure.email.api_settings.smtp_username', None)
+    monkeypatch.setattr('fm_mcp.infrastructure.email.api_settings.smtp_starttls', False)
+    SMTPEmailSender._send_sync('demo@example.test', 'Request created', 'Safe <text>')
+    assert messages[0].get_body(preferencelist=('plain',)).get_content().strip() == 'Safe <text>'
+    assert 'Safe &lt;text&gt;' in messages[0].get_body(preferencelist=('html',)).get_content()
 
 
 class FakeSession:

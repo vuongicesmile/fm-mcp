@@ -36,6 +36,21 @@ class ClickHouseClient:
             raise ClickHouseError("Warehouse returned an invalid profiling response")
         return data
 
+    def execute(self, sql: str, *, parameters: dict[str, str] | None = None) -> None:
+        """Execute a development DDL/DML statement without appending a format clause."""
+        params = {f"param_{key}": value for key, value in (parameters or {}).items()}
+        try:
+            response = httpx.post(
+                self.url,
+                content=sql.rstrip().rstrip(";").encode("utf-8"),
+                params=params,
+                auth=self.auth,
+                timeout=30,
+            )
+            response.raise_for_status()
+        except httpx.HTTPError as exc:
+            raise ClickHouseError("FM profiling cannot update the configured warehouse") from exc
+
     def scalar(self, sql: str, *, parameters: dict[str, str] | None = None) -> Any:
         rows = self.query_json(sql, parameters=parameters)
         return next(iter(rows[0].values()), None) if rows else None

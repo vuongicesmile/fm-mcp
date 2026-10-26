@@ -74,6 +74,8 @@ class WorkflowService:
                     f"Yêu cầu FM {request.request_code} đã được tạo.\n\n"
                     f"Tiêu đề: {request.title}\n"
                     f"Ưu tiên: {request.priority}\n"
+                    f"Trạng thái: Bản nháp — chưa gửi duyệt\n"
+                    f"Loại yêu cầu: {request.request_type}\n\n"
                     f"Mô tả: {request.description or 'Không có'}"
                 ),
                 "request_code": request.request_code,
