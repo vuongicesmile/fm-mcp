@@ -7,6 +7,8 @@ from fm_mcp.tools.profiling.get_data_profiling_overview import (
 from fm_mcp.tools.profiling.get_data_profiling_run import get_data_profiling_run
 from fm_mcp.tools.profiling.get_energy_comparison import get_energy_comparison
 from fm_mcp.tools.profiling.get_masked_raw_sample import get_masked_raw_sample
+from fm_mcp.tools.profiling.get_measurement_catalog import get_measurement_catalog
+from fm_mcp.tools.profiling.preview_measurement_evidence import preview_measurement_evidence
 from fm_mcp.tools.profiling.list_data_profiling_assets import list_data_profiling_assets
 from fm_mcp.tools.profiling.run_data_profiling import run_data_profiling
 from fm_mcp.tools.profiling.seed_bad_data_profiling_demo import (
@@ -15,6 +17,8 @@ from fm_mcp.tools.profiling.seed_bad_data_profiling_demo import (
 from fm_mcp.tools.profiling.seed_data_profiling_demo import seed_data_profiling_demo
 
 TOOLS = (
+    get_measurement_catalog,
+    preview_measurement_evidence,
     get_energy_comparison,
     get_bms_dashboard,
     list_data_profiling_assets,
