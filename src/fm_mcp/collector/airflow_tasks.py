@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import time
 from datetime import UTC, datetime
 from urllib.parse import urlencode
+from urllib.error import HTTPError, URLError
 from urllib.request import ProxyHandler, Request, build_opener
 
 from airflow.sdk import get_current_context, task
 from airflow.sdk.exceptions import AirflowFailException
+
+logger = logging.getLogger(__name__)
 
 
 def runner_request(method: str, path: str, payload: dict | None = None):
@@ -21,8 +25,20 @@ def runner_request(method: str, path: str, payload: dict | None = None):
     base = os.environ.get("CAPTURE_RUNNER_URL", "http://capture-runner:8020").rstrip("/")
     request = Request(base + path, data=json.dumps(payload).encode() if payload is not None else None,
                       method=method, headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"})
-    with build_opener(ProxyHandler({})).open(request, timeout=15) as response:
-        return json.loads(response.read(64 * 1024))
+    # Polling có thể thử lại trong giới hạn; tuyệt đối không phát lại POST khi chưa rõ kết quả.
+    attempts = 6 if method == "GET" else 1
+    for attempt in range(attempts):
+        try:
+            with build_opener(ProxyHandler({})).open(request, timeout=5 if method == "GET" else 15) as response:
+                return json.loads(response.read(64 * 1024))
+        except HTTPError as exc:
+            if exc.code not in {429, 500, 502, 503, 504} or attempt + 1 == attempts:
+                raise
+        except (URLError, TimeoutError, ConnectionError):
+            if attempt + 1 == attempts:
+                raise
+        logger.warning("Runner transient request failure; method=%s attempt=%s", method, attempt + 1)
+        time.sleep(min(0.5 * (attempt + 1), 1))
 
 
 @task(do_xcom_push=False)

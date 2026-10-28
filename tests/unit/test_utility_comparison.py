@@ -76,6 +76,30 @@ def test_missing_hours_or_quality_failure_blocks_comparison(warehouse):
     sql = next(sql for sql, _ in warehouse["queries"] if "previous_complete_days" in sql)
     for check in ("missing_hours=0", "reset_count=0", "gap_count=0", "spike_count=0", "critical_count=0"):
         assert check in sql
+    assert result["coverage"]["reason"] == "incomplete_quality"
+    assert result["coverage"]["periods"]["current"]["rejected_meter_days"] == 1
+    assert result["coverage"]["periods"]["current"]["missing_meter_days"] == 0
+
+
+def test_missing_period_has_actionable_diagnostics_not_fake_zero(warehouse):
+    warehouse["series"] = [reading(previous_days=0, previous_complete_days=0, previous_sum=0)]
+    result = comparison.energy_comparison()
+    assert result["coverage"]["reason"] == "missing_history"
+    assert result["coverage"]["periods"]["previous"] == {
+        "start": "2026-09-01", "expected_meter_days": 2, "valid_meter_days": 0,
+        "complete_meter_days": 0, "missing_meter_days": 2, "rejected_meter_days": 0,
+    }
+    assert result["previous_value"] is None and result["change_pct"] is None
+    assert "Tháng 09/2026" in result["message"]
+    assert "đồng bộ lịch sử" in result["message"]
+
+
+def test_first_day_of_month_is_distinct_from_missing_history(warehouse, monkeypatch):
+    monkeypatch.setattr(comparison, "periods", lambda: (date(2026, 9, 1), date(2026, 10, 1), 0))
+    warehouse["series"] = [reading(previous_days=0, current_days=0, previous_complete_days=0, current_complete_days=0)]
+    result = comparison.energy_comparison()
+    assert result["coverage"]["reason"] == "no_completed_days"
+    assert not result["complete"] and result["change_pct"] is None
 
 
 def test_default_does_not_double_count_main_and_hvac(warehouse):

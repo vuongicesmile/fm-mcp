@@ -92,6 +92,9 @@ def energy_comparison(building: str = "", equipment: str = "", metric: str = "el
                     equipment_name=equipment_names.get(equipment_id, equipment_id))
         for prefix in windows:
             item[f"{prefix}_value"] = row[f"{prefix}_sum"] if row[f"{prefix}_days"] else None
+            # Tách ngày chưa có tiêu thụ khỏi ngày có số nhưng chưa đạt chất lượng.
+            item[f"{prefix}_missing_days"] = max(0, days - row[f"{prefix}_days"])
+            item[f"{prefix}_rejected_days"] = max(0, row[f"{prefix}_days"] - row[f"{prefix}_complete_days"])
         item["complete"] = days > 0 and all(row[f"{p}_complete_days"] == days for p in windows)
         item["change_pct"] = round(100 * (item["current_value"] - item["previous_value"]) / item["previous_value"], 2) if item["complete"] and item["previous_value"] else None
         rows.append(item)
@@ -126,6 +129,17 @@ def energy_comparison(building: str = "", equipment: str = "", metric: str = "el
     coverage = {"first_date": min((row["first_date"] for row in available), default=None),
                 "last_date": max((row["last_date"] for row in available), default=None),
                 "meters": len(rows), "complete_meters": sum(row["complete"] for row in rows)}
+    coverage["periods"] = {
+        prefix: {"start": str(start), "expected_meter_days": len(rows) * days,
+                 "valid_meter_days": sum(row[f"{prefix}_days"] for row in rows),
+                 "complete_meter_days": sum(row[f"{prefix}_complete_days"] for row in rows),
+                 "missing_meter_days": sum(row[f"{prefix}_missing_days"] for row in rows),
+                 "rejected_meter_days": sum(row[f"{prefix}_rejected_days"] for row in rows)}
+        for prefix, start in (("previous", previous), ("current", current))
+    }
+    coverage["reason"] = ("no_matching_history" if not rows else "no_completed_days" if not days
+                          else "missing_history" if any(row[f"{p}_missing_days"] for row in rows for p in windows)
+                          else "incomplete_quality" if not complete else "complete")
     origins = sorted({row["data_origin"] for row in selected_catalog if row["data_origin"]})
     warnings = ["Các mã có tiền tố nguồn được giữ riêng; chưa hợp nhất cùng một tòa nhà giữa các nguồn."]
     if metric == "electricity" and not equipment:
@@ -140,8 +154,18 @@ def energy_comparison(building: str = "", equipment: str = "", metric: str = "el
         message = "Kỳ trước ghi nhận tiêu thụ bằng 0; không tính phần trăm thay đổi vì không có mẫu số hợp lệ."
     else:
         message = "Chưa đủ dữ liệu hợp lệ hai kỳ để so sánh; không tính tỷ lệ thay đổi và không điền số 0 cho dữ liệu thiếu." if rows else "Không tìm thấy lịch sử tiêu thụ phù hợp với bộ lọc. Danh mục tòa nhà không đồng nghĩa đã có lịch sử đo."
+        if rows and not days:
+            message = "Hôm nay là ngày đầu tháng; chưa có ngày hoàn tất để so sánh cùng kỳ. Không bao gồm ngày đang diễn ra."
+        if rows and days:
+            for prefix, start in (("previous", previous), ("current", current)):
+                period = coverage["periods"][prefix]
+                message += (f" Tháng {start:%m/%Y}: {period['complete_meter_days']}/{period['expected_meter_days']} ngày-công tơ đạt điều kiện;"
+                            f" {period['missing_meter_days']} ngày chưa có tiêu thụ hợp lệ,"
+                            f" {period['rejected_meter_days']} ngày chưa đạt độ phủ/chất lượng.")
         if coverage["last_date"]:
             message += f" Lịch sử tiêu thụ hiện có từ {coverage['first_date']} đến {coverage['last_date']}."
+        if rows and days:
+            message += " Cần đồng bộ lịch sử của hai kỳ và chạy chuyển đổi Marts; đổi bộ lọc hoặc tải lại không tự bổ sung dữ liệu nguồn."
     filters = {"building": building, "equipment": equipment, "metric": metric, "object_type": object_type, "group_by": group_by}
     return {"demo": False, "dataset": table, "source": f"{schema}: agg_meter_daily, rpt_building, {meter_table}, rpt_equipment",
             "data_origins": origins, "warnings": warnings, "coverage": coverage,
